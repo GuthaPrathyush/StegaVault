@@ -13,160 +13,25 @@ export const AppProvider = ({ children }) => {
   const navigate = useNavigate();
   
   // State variables
-  // const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  // const [error, setError] = useState(null);
-  // const [userNfts, setUserNfts] = useState([]);
-  // const [userTransactions, setUserTransactions] = useState([]);
-
-  const [user, setUser] = useState({
-    name: "John Doe",
-    mail: "john@example.com",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&q=80"
-  });
-  // const [isAuthenticated, setIsAuthenticated] = useState(true);
-  // const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Static data for user's NFTs
+  // Data state
   const [userNfts, setUserNfts] = useState([]);
-  // ([
-  //   { 
-  //     _id: "nft1", 
-  //     name: "Cosmic Dreamer", 
-  //     publisher_mail: "john@example.com", 
-  //     owner_mail: "john@example.com", 
-  //     price: 8500, 
-  //     image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-  //   },
-  //   { 
-  //     _id: "nft2", 
-  //     name: "Digital Serenity", 
-  //     publisher_mail: "marcus@example.com", 
-  //     owner_mail: "john@example.com", 
-  //     price: 12000, 
-  //     image: "https://images.unsplash.com/photo-1633186223008-a86b90689023?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-  //   },
-  //   { 
-  //     _id: "nft3", 
-  //     name: "Neon Memories", 
-  //     publisher_mail: "john@example.com", 
-  //     owner_mail: "john@example.com", 
-  //     price: 6500, 
-  //     image: "https://images.unsplash.com/photo-1618172193763-c511deb635ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-  //   },
-  //   { 
-  //     _id: "nft4", 
-  //     name: "Quantum Landscape", 
-  //     publisher_mail: "jamal@example.com", 
-  //     owner_mail: "john@example.com", 
-  //     price: 21000, 
-  //     image: "https://images.unsplash.com/photo-1618172193622-ae2d025f4032?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-  //   },
-  // ]);
+  const [userTransactions, setUserTransactions] = useState([]);
   
-  // Static data for user's transactions
-  const [userTransactions, setUserTransactions] = useState([])
-  // ([
-  //   {
-  //     _id: "tx101",
-  //     nft_id: "nft5",
-  //     nft_name: "Astral Projection",
-  //     from: "john@example.com",
-  //     to: "alex@example.com",
-  //     price: 14500,
-  //     timestamp: "2025-04-18T14:22:30Z"
-  //   },
-  //   {
-  //     _id: "tx102",
-  //     nft_id: "nft6",
-  //     nft_name: "Cyber Dawn",
-  //     from: "elena@example.com",
-  //     to: "john@example.com",
-  //     price: 9500,
-  //     timestamp: "2025-04-19T09:15:45Z"
-  //   },
-  //   {
-  //     _id: "tx103",
-  //     nft_id: "nft4",
-  //     nft_name: "Quantum Landscape",
-  //     from: "jamal@example.com",
-  //     to: "john@example.com",
-  //     price: 21000,
-  //     timestamp: "2025-04-20T11:05:12Z"
-  //   },
-  //   {
-  //     _id: "tx104",
-  //     nft_id: "nft2",
-  //     nft_name: "Digital Serenity",
-  //     from: "marcus@example.com",
-  //     to: "john@example.com",
-  //     price: 12000,
-  //     timestamp: "2025-04-20T16:30:22Z"
-  //   },
-  // ]);
-  
-  // Static marketplace data
-  const [marketplaceNfts, setMarketplaceNfts] = useState([
-    { 
-      _id: "nft5", 
-      name: "Ethereal Dreams", 
-      publisher_mail: "sarah@example.com", 
-      owner_mail: "sarah@example.com", 
-      price: 15000, 
-      image: "https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      _id: "nft6", 
-      name: "Cyber Dawn", 
-      publisher_mail: "elena@example.com", 
-      owner_mail: "elena@example.com", 
-      price: 9500, 
-      image: "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      _id: "nft7", 
-      name: "Digital Horizon", 
-      publisher_mail: "michael@example.com", 
-      owner_mail: "michael@example.com", 
-      price: 18000, 
-      image: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      _id: "nft8", 
-      name: "Abstract Thoughts", 
-      publisher_mail: "priya@example.com", 
-      owner_mail: "priya@example.com", 
-      price: 7500, 
-      image: "https://images.unsplash.com/photo-1604871000636-074fa5117945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-  ]);
-  
-  // Static notifications
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "sale",
-      message: "Your artwork 'Digital Serenity' was sold",
-      timestamp: "2025-04-20T14:30:00Z",
-      read: false
-    },
-    {
-      id: 2,
-      type: "follower",
-      message: "New follower: Alex Morgan",
-      timestamp: "2025-04-19T11:15:00Z",
-      read: true
-    },
-    {
-      id: 3,
-      type: "collection",
-      message: "New collection available: 'Neon Dreams'",
-      timestamp: "2025-04-18T09:45:00Z",
-      read: false
-    }
-  ]);
+  // Marketplace state
+  const [marketplaceItems, setMarketplaceItems] = useState([]);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [marketplacePage, setMarketplacePage] = useState(1);
+  const [marketplacePagination, setMarketplacePagination] = useState({
+    current_page: 1,
+    total_pages: 1,
+    total_items: 0,
+    items_per_page: 30
+  });
   
   // Check if user session is valid
   const validateSession = async () => {
@@ -183,23 +48,19 @@ export const AppProvider = ({ children }) => {
     }
     
     try {
-      const response = await axios.post(`${backendURI}/checkUser`, { auth_token }, {
+      const response = await axios.post(`${backendURI}/checkUser`, {}, {
         headers: {
           'Content-Type': 'application/json',
-          'auth_token': `${auth_token}`,
-          Accept: 'application/json'
+          'auth_token': auth_token
         }
       });
       
-      const { valid, user: userData } = response.data;
-      
-      if (valid) {
+      if (response.data.valid) {
         setIsAuthenticated(true);
-        setUser(userData);
+        await fetchUserProfile(); // Fetch user profile after successful authentication
         setIsLoading(false);
         return true;
       } else {
-        // Session is invalid
         handleLogout();
         setError(response.data.message || 'Session expired. Please login again.');
         setIsLoading(false);
@@ -211,6 +72,32 @@ export const AppProvider = ({ children }) => {
       setError(err.response?.data?.message || 'Authentication failed. Please login again.');
       setIsLoading(false);
       return false;
+    }
+  };
+  
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    const auth_token = localStorage.getItem('auth_token');
+    
+    if (!auth_token) {
+      return;
+    }
+    
+    try {
+      const response = await axios.get(`${backendURI}/getProfile`, {
+        headers: {
+          'auth_token': auth_token
+        }
+      });
+      
+      if (response.data.success) {
+        setUser(response.data.user);
+      } else {
+        setError(response.data.message || 'Failed to fetch user profile.');
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      setError(err.response?.data?.message || 'Failed to fetch user profile.');
     }
   };
   
@@ -227,14 +114,16 @@ export const AppProvider = ({ children }) => {
     try {
       const response = await axios.post(`${backendURI}/getUserArtworks`, {}, {
         headers: {
-          'Content-type': "application/json",
-          Accept: 'application/json',
-          'auth_token': `${auth_token}`
+          'Content-Type': 'application/json',
+          'auth_token': auth_token
         }
       });
       
-      setUserNfts(response.data.artworks);
-      console.log(response.data.artworks);
+      if (response.data.success) {
+        setUserNfts(response.data.artworks);
+      } else {
+        setError(response.data.message || 'Failed to load your artwork collection.');
+      }
     } catch (err) {
       console.error('Error fetching user NFTs:', err);
       setError(err.response?.data?.message || 'Failed to load your artwork collection.');
@@ -261,13 +150,16 @@ export const AppProvider = ({ children }) => {
     try {
       const response = await axios.post(`${backendURI}/getUserTransactions`, {}, {
         headers: {
-          'Content-type': 'application/json',
-          Accept: 'application/json',
-          'auth_token': `${auth_token}`
+          'Content-Type': 'application/json',
+          'auth_token': auth_token
         }
       });
       
-      setUserTransactions(response.data.transactions);
+      if (response.data.success) {
+        setUserTransactions(response.data.transactions);
+      } else {
+        setError(response.data.message || 'Failed to load your transaction history.');
+      }
     } catch (err) {
       console.error('Error fetching user transactions:', err);
       setError(err.response?.data?.message || 'Failed to load your transaction history.');
@@ -278,6 +170,58 @@ export const AppProvider = ({ children }) => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Fetch marketplace items with pagination
+  const fetchMarketplaceItems = async (page = 1, itemsPerPage = 30) => {
+    setMarketplaceLoading(true);
+    setError(null);
+    
+    const auth_token = localStorage.getItem('auth_token');
+    
+    if (!auth_token) {
+      setMarketplaceLoading(false);
+      return;
+    }
+    
+    try {
+      const response = await axios.post(
+        `${backendURI}/getMarketplaceItems`,
+        { page, items_per_page: itemsPerPage },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'auth_token': auth_token
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        setMarketplaceItems(response.data.items);
+        setMarketplacePagination(response.data.pagination);
+        setMarketplacePage(response.data.pagination.current_page);
+      } else {
+        setError(response.data.message);
+      }
+    } catch (err) {
+      console.error('Error fetching marketplace items:', err);
+      setError(err.response?.data?.message || 'Failed to load marketplace items.');
+      
+      // If unauthorized, validate session again
+      if (err.response?.status === 401) {
+        validateSession();
+      }
+    } finally {
+      setMarketplaceLoading(false);
+    }
+  };
+  
+  // Change marketplace page
+  const changeMarketplacePage = (newPage) => {
+    if (newPage >= 1 && newPage <= marketplacePagination.total_pages) {
+      setMarketplacePage(newPage);
+      fetchMarketplaceItems(newPage);
     }
   };
   
@@ -294,21 +238,17 @@ export const AppProvider = ({ children }) => {
         }
       });
       
-      const { auth_token, user: userData } = response.data;
-      
       // Store token in localStorage
-      localStorage.setItem('auth_token', auth_token);
+      localStorage.setItem('auth_token', response.data.auth_token);
       
-      // Update state
-      setUser(userData);
-      setIsAuthenticated(true);
+      // Validate session and fetch user data
+      await validateSession();
       
       // Load user data
-      //******************* fetch user data*************************** */
-      // await Promise.all([
-      //   fetchUserNfts(),
-      //   fetchUserTransactions()
-      // ]);
+      await Promise.all([
+        fetchUserNfts(),
+        fetchUserTransactions()
+      ]);
       
       // Navigate to dashboard
       navigate('/dashboard');
@@ -317,9 +257,8 @@ export const AppProvider = ({ children }) => {
     } catch (err) {
       console.error('Login error:', err);
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-      return false;
-    } finally {
       setIsLoading(false);
+      return false;
     }
   };
   
@@ -336,6 +275,7 @@ export const AppProvider = ({ children }) => {
         }
       });
       
+      setIsLoading(false);
       return {
         success: true,
         message: response.data.message
@@ -343,12 +283,11 @@ export const AppProvider = ({ children }) => {
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setIsLoading(false);
       return {
         success: false,
         message: err.response?.data?.message || 'Registration failed. Please try again.'
       };
-    } finally {
-      setIsLoading(false);
     }
   };
   
@@ -377,20 +316,24 @@ export const AppProvider = ({ children }) => {
     }
     
     try {
-      const response = await axios.post(`${backendURI}/nft/upload`, formData, {
+      const response = await axios.post(`${backendURI}/upload-nft`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Token ${auth_token}`
+          'auth_token': auth_token
         }
       });
       
       // Refresh NFTs after upload
-      await fetchUserNfts();
+      if (response.data.success) {
+        await fetchUserNfts();
+      }
       
+      setIsLoading(false);
       return {
-        success: true,
-        nft: response.data.nft,
-        message: 'Artwork uploaded successfully'
+        success: response.data.success,
+        message: response.data.message,
+        nft_id: response.data.nft_id,
+        image_url: response.data.image_url
       };
     } catch (err) {
       console.error('NFT upload error:', err);
@@ -401,84 +344,25 @@ export const AppProvider = ({ children }) => {
         validateSession();
       }
       
+      setIsLoading(false);
       return {
         success: false,
         message: err.response?.data?.message || 'Failed to upload artwork'
       };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // Buy an NFT
-  const buyNft = async (nftId, price) => {
-    setIsLoading(true);
-    setError(null);
-    
-    const auth_token = localStorage.getItem('auth_token');
-    
-    if (!auth_token) {
-      setError('Authentication required');
-      setIsLoading(false);
-      navigate('/login');
-      return { success: false, message: 'Authentication required' };
-    }
-    
-    try {
-      const response = await axios.post(`${backendURI}/nft/buy`, 
-        { nft_id: nftId, price }, 
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${auth_token}`
-          }
-        }
-      );
-      
-      // Refresh data after purchase
-      await Promise.all([
-        fetchUserNfts(),
-        fetchUserTransactions()
-      ]);
-      
-      return {
-        success: true,
-        transaction: response.data.transaction,
-        message: 'Artwork purchased successfully'
-      };
-    } catch (err) {
-      console.error('NFT purchase error:', err);
-      setError(err.response?.data?.message || 'Failed to purchase artwork.');
-      
-      // If unauthorized, validate session again
-      if (err.response?.status === 401) {
-        validateSession();
-      }
-      
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Failed to purchase artwork'
-      };
-    } finally {
-      setIsLoading(false);
     }
   };
   
   // Initial authentication check when app loads
   useEffect(() => {
     const initializeAuth = async () => {
-      const isValid = await validateSession();
+      await validateSession();
       
-      if (isValid) {
+      if (isAuthenticated) {
         // If session is valid, fetch user data
-        //***************** fetching user data ********************** */
-        // await Promise.all([
-        //   fetchUserNfts(),
-        //   fetchUserTransactions()
-        // ]);
-      } else {
-        // If no valid session, redirect to login
-        navigate('/login');
+        await Promise.all([
+          fetchUserNfts(),
+          fetchUserTransactions()
+        ]);
       }
     };
     
@@ -493,14 +377,20 @@ export const AppProvider = ({ children }) => {
     error,
     userNfts,
     userTransactions,
+    marketplaceItems,
+    marketplaceLoading,
+    marketplacePage,
+    marketplacePagination,
     login,
     register,
     logout: handleLogout,
     validateSession,
+    fetchUserProfile,
     fetchUserNfts,
     fetchUserTransactions,
+    fetchMarketplaceItems,
+    changeMarketplacePage,
     uploadNft,
-    buyNft,
     clearError: () => setError(null)
   };
   

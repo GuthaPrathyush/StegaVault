@@ -517,7 +517,6 @@ async def extractNftDataHelper(nft_id: str):
             raise Exception("NFT or image not found")
         
         # Download image from Cloudinary URL
-        import httpx
         async with httpx.AsyncClient() as client:
             img_response = await client.get(nft['image_url'])
             if img_response.status_code != 200:
@@ -660,6 +659,142 @@ async def getUserArtworks(request: Request, response: Response):
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"success": False, "message": f"Error retrieving artworks: {str(e)}"}
 
+
+@app.post('/getMarketplaceItems')
+async def getMarketplaceItems(request: Request, response: Response):
+    # Check authentication
+    req_headers = dict(request.headers)
+    if 'auth_token' not in req_headers:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"success": False, "message": "Unauthorized Access!"}
+    
+    auth_token = req_headers['auth_token']
+    
+    try:
+        # Get request body for pagination parameters
+        data = await request.json()
+        page = data.get('page', 1)
+        items_per_page = data.get('items_per_page', 30)
+        
+        # Ensure page and items_per_page are valid integers
+        try:
+            page = int(page)
+            items_per_page = int(items_per_page)
+            if page < 1:
+                page = 1
+            if items_per_page < 1 or items_per_page > 100:  # Set reasonable limits
+                items_per_page = 30
+        except ValueError:
+            page = 1
+            items_per_page = 30
+        
+        # Authenticate user and get user information
+        user = await checkUserHelper(auth_token)
+        user_mail = user['mail']
+        
+        # Calculate skip value for pagination
+        skip = (page - 1) * items_per_page
+        
+        # Query NFTs that are:
+        # 1. Active
+        # 2. Not owned by the current user
+        # 3. Paginated based on page and items_per_page
+        pipeline = [
+            {
+                "$match": {
+                    "status": "active",
+                    "owner_mail": {"$ne": user_mail}
+                }
+            },
+            {
+                "$sort": {"timestamp": -1}  # Sort by newest first
+            },
+            {
+                "$skip": skip
+            },
+            {
+                "$limit": items_per_page
+            }
+        ]
+        
+        # Execute the aggregation pipeline
+        marketplace_items = await nfts.aggregate(pipeline).to_list(length=None)
+        
+        # Get total count for pagination info
+        total_count = await nfts.count_documents({
+            "status": "active",
+            "owner_mail": {"$ne": user_mail}
+        })
+        
+        # Calculate total pages
+        total_pages = (total_count + items_per_page - 1) // items_per_page
+        
+        # Convert ObjectId to string for JSON serialization
+        for item in marketplace_items:
+            item["_id"] = str(item["_id"])
+            
+            # Format timestamp if it exists
+            if "timestamp" in item and isinstance(item["timestamp"], datetime):
+                item["timestamp"] = item["timestamp"].isoformat()
+        
+        # Return the marketplace items with pagination info
+        return {
+            "success": True,
+            "message": "Marketplace items retrieved successfully",
+            "items": marketplace_items,
+            "pagination": {
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_items": total_count,
+                "items_per_page": items_per_page
+            }
+        }
+            
+    except Exception as e:
+        print(f"Error retrieving marketplace items: {str(e)}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"success": False, "message": f"Error retrieving marketplace items: {str(e)}"}
+
+@app.get('/getProfile')
+async def get_profile(request: Request, response: Response):
+    # Check authentication
+    req_headers = dict(request.headers)
+    if 'auth_token' not in req_headers:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"success": False, "message": "Unauthorized Access!"}
+    
+    auth_token = req_headers['auth_token']
+    
+    try:
+        # Authenticate user using the existing helper function
+        user = await checkUserHelper(auth_token)
+        
+        # Extract only the required fields (name and mail)
+        user_profile = {
+            "name": user['name'],
+            "mail": user['mail']
+        }
+        
+        return {
+            "success": True,
+            "message": "User profile retrieved successfully",
+            "user": user_profile
+        }
+            
+    except Exception as e:
+        print(f"Error retrieving user profile: {str(e)}")
+        
+        # Check if the exception has a specific error message structure
+        if isinstance(e.args[0], dict) and "message" in e.args[0]:
+            error_message = e.args[0]["message"]
+            error_valid = e.args[0].get("valid", False)
+            
+            response.status_code = status.HTTP_401_UNAUTHORIZED if not error_valid else status.HTTP_500_INTERNAL_SERVER_ERROR
+            return {"success": False, "message": error_message}
+        
+        # Generic error handling
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"success": False, "message": f"Error retrieving user profile: {str(e)}"}
 
 
 
