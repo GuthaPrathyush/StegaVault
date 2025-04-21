@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FiSearch, FiBell, FiUser, FiLogOut, FiMenu, FiX, FiUpload, FiDollarSign, FiGrid, FiSettings } from 'react-icons/fi';
+import { useAppContext } from '../context/AppContext';
 
 const Navbar = () => {
+  const { user, logout } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -190,7 +192,7 @@ const Navbar = () => {
                     alt="User" 
                     className="w-6 h-6 rounded-full"
                   />
-                  <span className="text-sm font-medium">John Doe</span>
+                  <span className="text-sm font-medium">{user?.name || 'User'}</span>
                 </button>
                 
                 {/* Profile Dropdown */}
@@ -209,7 +211,10 @@ const Navbar = () => {
                       </div>
                     </Link>
                     <div className="border-t border-white/10 my-1"></div>
-                    <button className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors">
+                    <button 
+                      onClick={logout}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                    >
                       <div className="flex items-center">
                         <FiLogOut className="mr-2" />
                         Sign Out
@@ -312,7 +317,10 @@ const Navbar = () => {
             
             <div className="border-t border-white/10 my-2"></div>
             
-            <button className="block w-full text-left px-3 py-2 rounded-lg text-base font-medium text-red-400 hover:bg-white/5 transition-colors">
+            <button 
+              onClick={logout}
+              className="block w-full text-left px-3 py-2 rounded-lg text-base font-medium text-red-400 hover:bg-white/5 transition-colors"
+            >
               <div className="flex items-center">
                 <FiLogOut className="mr-2" />
                 Sign Out

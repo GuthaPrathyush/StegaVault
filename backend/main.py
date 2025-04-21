@@ -8,6 +8,8 @@ from bson import ObjectId, errors
 import base64
 from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
+import cloudinary
+import cloudinary.uploader
 import smtplib
 import uvicorn
 import motor.motor_asyncio
@@ -52,6 +54,14 @@ client = motor.motor_asyncio.AsyncIOMotorClient(mongoURI)
 database = client[os.getenv('DB_NAME')]
 users = database['users']
 registrations = database['registrations']
+
+#cloudinary config
+cloudinary.config(
+    cloud_name = "ddvewtyvu",
+    api_key = "253238265924481",
+    api_secret = os.getenv('CLOUDINARY_API_SECRET_KEY'), # Click 'View API Keys' above to copy your API secret
+    secure=True
+)
 
 emailRegex = r"^[a-zA-Z0-9](?:[a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@srmap\.edu\.in$"
 passwordRegex = r"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W\_])[A-Za-z\d\W\_]+$"

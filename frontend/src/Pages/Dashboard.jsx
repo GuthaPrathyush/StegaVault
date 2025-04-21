@@ -1,96 +1,18 @@
 import { useState, useEffect } from 'react';
 import { FiUpload, FiDollarSign, FiImage, FiTrendingUp, FiUser, FiClock } from 'react-icons/fi';
+import { useAppContext } from '../context/AppContext';
+import { Navigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Static data
-  const stats = {
-    totalArtworks: 147,
-    totalSales: 32,
-    pendingTransactions: 8,
-    newUsers: 24
-  };
-  
-  // Static artworks with real images from Unsplash
-  const staticArtworks = [
-    { 
-      id: 1, 
-      title: "Cosmic Dreamer", 
-      artist: "Elena Bright", 
-      price: 8500, 
-      imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      id: 2, 
-      title: "Digital Serenity", 
-      artist: "Marcus Wei", 
-      price: 12000, 
-      imageUrl: "https://images.unsplash.com/photo-1633186223008-a86b90689023?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      id: 3, 
-      title: "Neon Memories", 
-      artist: "Sophia Chen", 
-      price: 6500, 
-      imageUrl: "https://images.unsplash.com/photo-1618172193763-c511deb635ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      id: 4, 
-      title: "Quantum Landscape", 
-      artist: "Jamal Harris", 
-      price: 21000, 
-      imageUrl: "https://images.unsplash.com/photo-1618172193622-ae2d025f4032?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-  ];
-  
-  const staticTransactions = [
-    {
-      id: 101,
-      artwork: "Astral Projection",
-      buyer: "Alex Morgan",
-      seller: "Diana Prince",
-      price: 14500,
-      status: "completed",
-      date: "2025-04-18T14:22:30Z"
-    },
-    {
-      id: 102,
-      artwork: "Cyber Dawn",
-      buyer: "James Wilson",
-      seller: "Elena Bright",
-      price: 9500,
-      status: "completed",
-      date: "2025-04-19T09:15:45Z"
-    },
-    {
-      id: 103,
-      artwork: "Quantum Landscape",
-      buyer: "Sarah Johnson",
-      seller: "Jamal Harris",
-      price: 21000,
-      status: "pending",
-      date: "2025-04-20T11:05:12Z"
-    },
-    {
-      id: 104,
-      artwork: "Digital Serenity",
-      buyer: "Michael Brown",
-      seller: "Marcus Wei",
-      price: 12000,
-      status: "pending",
-      date: "2025-04-20T16:30:22Z"
-    },
-  ];
-  
-  useEffect(() => {
-    // Simulate loading time
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  const { 
+    isLoading, 
+    userNfts, 
+    userTransactions, 
+    fetchUserNfts, 
+    fetchUserTransactions,
+    user,
+    isAuthenticated
+  } = useAppContext();
   
   // Format date to a more readable format
   const formatDate = (dateString) => {
@@ -103,13 +25,41 @@ const Dashboard = () => {
     return `₹${amount.toLocaleString('en-IN')}`;
   };
   
+  // Calculate stats
+  const stats = {
+    totalArtworks: userNfts.length,
+    totalSales: userTransactions.filter(t => t.from === user?.mail).length,
+    pendingTransactions: 0, // This would come from backend if you have pending status
+    newPurchases: userTransactions.filter(t => t.to === user?.mail).length
+  };
+  
+  // Refresh data when component mounts
+  useEffect(() => {
+    // ****************** refresh user data ************************
+    // fetchUserNfts();
+    // fetchUserTransactions();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#22D3EE]"></div>
+      </div>
+    );
+  }
+  
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0F172A] to-[#0F172A]/95 text-white pt-16">
       {/* Main content with padding-top to account for fixed navbar */}
       <div className="p-6 max-w-7xl mx-auto">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Welcome to StegaVault</h1>
+          <h1 className="text-3xl font-bold">Welcome, {user?.name || 'User'}</h1>
           <p className="text-[#22D3EE] mt-2">Your secure digital art platform with embedded signatures</p>
         </div>
         
@@ -118,7 +68,7 @@ const Dashboard = () => {
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/5 hover:border-[#22D3EE]/30 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Artworks</p>
+                <p className="text-gray-400 text-sm">Your Artworks</p>
                 <h3 className="text-2xl font-bold mt-1">{stats.totalArtworks}</h3>
               </div>
               <div className="bg-[#22D3EE]/20 p-3 rounded-lg">
@@ -127,14 +77,14 @@ const Dashboard = () => {
             </div>
             <div className="mt-4 flex items-center text-xs text-green-400">
               <FiTrendingUp className="mr-1" />
-              <span>+12% from last month</span>
+              <span>Your collection</span>
             </div>
           </div>
           
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/5 hover:border-[#A855F7]/30 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Sales</p>
+                <p className="text-gray-400 text-sm">Artworks Sold</p>
                 <h3 className="text-2xl font-bold mt-1">{stats.totalSales}</h3>
               </div>
               <div className="bg-[#A855F7]/20 p-3 rounded-lg">
@@ -143,7 +93,7 @@ const Dashboard = () => {
             </div>
             <div className="mt-4 flex items-center text-xs text-green-400">
               <FiTrendingUp className="mr-1" />
-              <span>+8% from last month</span>
+              <span>Your sales</span>
             </div>
           </div>
           
@@ -166,8 +116,8 @@ const Dashboard = () => {
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/5 hover:border-[#A855F7]/30 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">New Users</p>
-                <h3 className="text-2xl font-bold mt-1">{stats.newUsers}</h3>
+                <p className="text-gray-400 text-sm">Artworks Purchased</p>
+                <h3 className="text-2xl font-bold mt-1">{stats.newPurchases}</h3>
               </div>
               <div className="bg-[#A855F7]/20 p-3 rounded-lg">
                 <FiUser className="text-[#A855F7] text-xl" />
@@ -175,18 +125,18 @@ const Dashboard = () => {
             </div>
             <div className="mt-4 flex items-center text-xs text-green-400">
               <FiTrendingUp className="mr-1" />
-              <span>+15% from last month</span>
+              <span>Your purchases</span>
             </div>
           </div>
         </div>
         
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Artworks */}
+          {/* User's NFTs */}
           <div className="lg:col-span-2">
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/5 h-full">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Recent Artworks</h2>
+                <h2 className="text-xl font-semibold">Your Artworks</h2>
                 <button className="text-sm text-[#22D3EE] hover:text-[#A855F7] transition-colors">
                   View All
                 </button>
@@ -202,14 +152,14 @@ const Dashboard = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : userNfts.length > 0 ? (
                 <div className="grid grid-cols-2 gap-4">
-                  {staticArtworks.map((artwork) => (
-                    <div key={artwork.id} className="group cursor-pointer">
+                  {userNfts.slice(0, 4).map((nft) => (
+                    <div key={nft._id} className="group cursor-pointer">
                       <div className="relative overflow-hidden rounded-lg mb-2">
                         <img 
-                          src={artwork.imageUrl} 
-                          alt={artwork.title} 
+                          src={nft.image} 
+                          alt={nft.name} 
                           className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-110"
                           onError={(e) => {
                             e.target.onerror = null;
@@ -219,7 +169,7 @@ const Dashboard = () => {
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
                           <div className="p-3 w-full">
                             <div className="flex justify-between items-center">
-                              <span className="text-white font-medium">{formatCurrency(artwork.price)}</span>
+                              <span className="text-white font-medium">{formatCurrency(nft.price || 0)}</span>
                               <button className="bg-[#22D3EE] hover:bg-[#A855F7] transition-colors text-white rounded-full p-1">
                                 <FiDollarSign />
                               </button>
@@ -227,10 +177,14 @@ const Dashboard = () => {
                           </div>
                         </div>
                       </div>
-                      <h3 className="font-medium text-white group-hover:text-[#22D3EE] transition-colors">{artwork.title}</h3>
-                      <p className="text-sm text-gray-400">by {artwork.artist}</p>
+                      <h3 className="font-medium text-white group-hover:text-[#22D3EE] transition-colors">{nft.name}</h3>
+                      <p className="text-sm text-gray-400">by {nft.publisher_mail === user?.mail ? 'You' : nft.publisher_mail}</p>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">You don't have any artworks yet.</p>
                 </div>
               )}
               
@@ -245,10 +199,10 @@ const Dashboard = () => {
             </div>
           </div>
           
-          {/* Recent Transactions */}
+          {/* User's Transactions */}
           <div className="lg:col-span-1">
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/5 h-full">
-              <h2 className="text-xl font-semibold mb-6">Recent Transactions</h2>
+              <h2 className="text-xl font-semibold mb-6">Your Transactions</h2>
               
               {isLoading ? (
                 <div className="space-y-4">
@@ -262,40 +216,46 @@ const Dashboard = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : userTransactions.length > 0 ? (
                 <div className="space-y-4">
-                  {staticTransactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-start p-3 rounded-lg hover:bg-white/5 transition-colors">
+                  {userTransactions.slice(0, 4).map((transaction) => (
+                    <div key={transaction._id} className="flex items-start p-3 rounded-lg hover:bg-white/5 transition-colors">
                       <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-                        transaction.status === 'completed' ? 'bg-green-500/20' : 'bg-yellow-500/20'
+                        transaction.from === user?.mail ? 'bg-green-500/20' : 'bg-blue-500/20'
                       }`}>
                         <FiDollarSign className={`${
-                          transaction.status === 'completed' ? 'text-green-400' : 'text-yellow-400'
+                          transaction.from === user?.mail ? 'text-green-400' : 'text-blue-400'
                         }`} />
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between">
-                          <h4 className="font-medium text-white">{transaction.artwork}</h4>
-                          <span className="font-medium text-white">{formatCurrency(transaction.price)}</span>
+                          <h4 className="font-medium text-white">{transaction.nft_name || 'Artwork'}</h4>
+                          <span className="font-medium text-white">{formatCurrency(transaction.cost)}</span>
                         </div>
                         <div className="flex justify-between mt-1">
                           <p className="text-xs text-gray-400">
-                            {transaction.buyer} from {transaction.seller}
+                            {transaction.from === user?.mail 
+                              ? `Sold to ${transaction.to}` 
+                              : `Bought from ${transaction.from}`}
                           </p>
-                          <span className="text-xs text-gray-400">{formatDate(transaction.date)}</span>
+                          <span className="text-xs text-gray-400">{formatDate(transaction.timestamp)}</span>
                         </div>
                         <div className="mt-2">
                           <span className={`text-xs px-2 py-1 rounded-full ${
-                            transaction.status === 'completed' 
+                            transaction.from === user?.mail 
                               ? 'bg-green-500/20 text-green-400' 
-                              : 'bg-yellow-500/20 text-yellow-400'
+                              : 'bg-blue-500/20 text-blue-400'
                           }`}>
-                            {transaction.status}
+                            {transaction.from === user?.mail ? 'Sold' : 'Purchased'}
                           </span>
                         </div>
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">You don't have any transactions yet.</p>
                 </div>
               )}
               

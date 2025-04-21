@@ -1,47 +1,30 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Link, Navigate } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
 
 const Login = () => {
   const [mail, setMail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const backendURI = import.meta.env.VITE_BACKEND_URI;
-  const navigate = useNavigate();
+  const { login, isLoading, error, clearError, isAuthenticated } = useAppContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      // Create user credentials object with mail instead of email
-      const userData = {
-        mail: mail,
-        password: password
-      };
-      
-      // Use axios instead of fetch for the API call
-      const response = await axios.post(`${backendURI}/login`, userData, {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        }
-      });
-      
-      const data = response.data;
-      
-      // Store JWT token in localStorage
-      localStorage.setItem('auth_token', data.token);
-      navigate('/dashboard');
-    } catch (err) {
-      // Handle error from axios response
-      setError(err.response?.data?.message || err.message || 'Login failed');
-    } finally {
-      setIsLoading(false);
-    }
+    clearError();
+    await login(mail, password);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#22D3EE]"></div>
+      </div>
+    );
+  }
+  
+  // Redirect to dashboard if already authenticated
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-4">
@@ -91,9 +74,9 @@ const Login = () => {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                   Password
                 </label>
-                <a href="/forgot-password" className="text-sm text-[#22D3EE] hover:text-[#A855F7] transition-colors">
+                <Link to="/forgot-password" className="text-sm text-[#22D3EE] hover:text-[#A855F7] transition-colors">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <input
                 id="password"
@@ -131,9 +114,9 @@ const Login = () => {
           <div className="mt-6 text-center">
             <p className="text-gray-300">
               Don't have an account?{' '}
-              <a href="/register" className="text-[#22D3EE] hover:text-[#A855F7] transition-colors font-medium">
+              <Link to="/register" className="text-[#22D3EE] hover:text-[#A855F7] transition-colors font-medium">
                 Sign up
-              </a>
+              </Link>
             </p>
           </div>
         </div>
@@ -142,9 +125,9 @@ const Login = () => {
         <div className="mt-8 text-center text-gray-500 text-sm">
           <p>© 2025 StegaVault. All rights reserved.</p>
           <div className="mt-2 flex justify-center space-x-4">
-            <a href="/terms" className="hover:text-[#22D3EE] transition-colors">Terms</a>
-            <a href="/privacy" className="hover:text-[#22D3EE] transition-colors">Privacy</a>
-            <a href="/help" className="hover:text-[#22D3EE] transition-colors">Help</a>
+            <Link to="/terms" className="hover:text-[#22D3EE] transition-colors">Terms</Link>
+            <Link to="/privacy" className="hover:text-[#22D3EE] transition-colors">Privacy</Link>
+            <Link to="/help" className="hover:text-[#22D3EE] transition-colors">Help</Link>
           </div>
         </div>
       </div>
