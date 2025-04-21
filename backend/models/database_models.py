@@ -9,3 +9,7 @@ class User(BaseModel):
 class LoginUser(BaseModel):
     mail: str
     password: str
+
+class OwnershipVerificationRequest(BaseModel):
+    nft_id: str
+    owner_mail: str

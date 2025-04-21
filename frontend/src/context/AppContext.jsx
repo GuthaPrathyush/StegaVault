@@ -30,80 +30,82 @@ export const AppProvider = ({ children }) => {
   const [error, setError] = useState(null);
   
   // Static data for user's NFTs
-  const [userNfts, setUserNfts] = useState([
-    { 
-      _id: "nft1", 
-      name: "Cosmic Dreamer", 
-      publisher_mail: "john@example.com", 
-      owner_mail: "john@example.com", 
-      price: 8500, 
-      image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      _id: "nft2", 
-      name: "Digital Serenity", 
-      publisher_mail: "marcus@example.com", 
-      owner_mail: "john@example.com", 
-      price: 12000, 
-      image: "https://images.unsplash.com/photo-1633186223008-a86b90689023?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      _id: "nft3", 
-      name: "Neon Memories", 
-      publisher_mail: "john@example.com", 
-      owner_mail: "john@example.com", 
-      price: 6500, 
-      image: "https://images.unsplash.com/photo-1618172193763-c511deb635ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-    { 
-      _id: "nft4", 
-      name: "Quantum Landscape", 
-      publisher_mail: "jamal@example.com", 
-      owner_mail: "john@example.com", 
-      price: 21000, 
-      image: "https://images.unsplash.com/photo-1618172193622-ae2d025f4032?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-    },
-  ]);
+  const [userNfts, setUserNfts] = useState([]);
+  // ([
+  //   { 
+  //     _id: "nft1", 
+  //     name: "Cosmic Dreamer", 
+  //     publisher_mail: "john@example.com", 
+  //     owner_mail: "john@example.com", 
+  //     price: 8500, 
+  //     image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+  //   },
+  //   { 
+  //     _id: "nft2", 
+  //     name: "Digital Serenity", 
+  //     publisher_mail: "marcus@example.com", 
+  //     owner_mail: "john@example.com", 
+  //     price: 12000, 
+  //     image: "https://images.unsplash.com/photo-1633186223008-a86b90689023?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+  //   },
+  //   { 
+  //     _id: "nft3", 
+  //     name: "Neon Memories", 
+  //     publisher_mail: "john@example.com", 
+  //     owner_mail: "john@example.com", 
+  //     price: 6500, 
+  //     image: "https://images.unsplash.com/photo-1618172193763-c511deb635ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+  //   },
+  //   { 
+  //     _id: "nft4", 
+  //     name: "Quantum Landscape", 
+  //     publisher_mail: "jamal@example.com", 
+  //     owner_mail: "john@example.com", 
+  //     price: 21000, 
+  //     image: "https://images.unsplash.com/photo-1618172193622-ae2d025f4032?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+  //   },
+  // ]);
   
   // Static data for user's transactions
-  const [userTransactions, setUserTransactions] = useState([
-    {
-      _id: "tx101",
-      nft_id: "nft5",
-      nft_name: "Astral Projection",
-      from: "john@example.com",
-      to: "alex@example.com",
-      cost: 14500,
-      timestamp: "2025-04-18T14:22:30Z"
-    },
-    {
-      _id: "tx102",
-      nft_id: "nft6",
-      nft_name: "Cyber Dawn",
-      from: "elena@example.com",
-      to: "john@example.com",
-      cost: 9500,
-      timestamp: "2025-04-19T09:15:45Z"
-    },
-    {
-      _id: "tx103",
-      nft_id: "nft4",
-      nft_name: "Quantum Landscape",
-      from: "jamal@example.com",
-      to: "john@example.com",
-      cost: 21000,
-      timestamp: "2025-04-20T11:05:12Z"
-    },
-    {
-      _id: "tx104",
-      nft_id: "nft2",
-      nft_name: "Digital Serenity",
-      from: "marcus@example.com",
-      to: "john@example.com",
-      cost: 12000,
-      timestamp: "2025-04-20T16:30:22Z"
-    },
-  ]);
+  const [userTransactions, setUserTransactions] = useState([])
+  // ([
+  //   {
+  //     _id: "tx101",
+  //     nft_id: "nft5",
+  //     nft_name: "Astral Projection",
+  //     from: "john@example.com",
+  //     to: "alex@example.com",
+  //     price: 14500,
+  //     timestamp: "2025-04-18T14:22:30Z"
+  //   },
+  //   {
+  //     _id: "tx102",
+  //     nft_id: "nft6",
+  //     nft_name: "Cyber Dawn",
+  //     from: "elena@example.com",
+  //     to: "john@example.com",
+  //     price: 9500,
+  //     timestamp: "2025-04-19T09:15:45Z"
+  //   },
+  //   {
+  //     _id: "tx103",
+  //     nft_id: "nft4",
+  //     nft_name: "Quantum Landscape",
+  //     from: "jamal@example.com",
+  //     to: "john@example.com",
+  //     price: 21000,
+  //     timestamp: "2025-04-20T11:05:12Z"
+  //   },
+  //   {
+  //     _id: "tx104",
+  //     nft_id: "nft2",
+  //     nft_name: "Digital Serenity",
+  //     from: "marcus@example.com",
+  //     to: "john@example.com",
+  //     price: 12000,
+  //     timestamp: "2025-04-20T16:30:22Z"
+  //   },
+  // ]);
   
   // Static marketplace data
   const [marketplaceNfts, setMarketplaceNfts] = useState([
@@ -223,7 +225,7 @@ export const AppProvider = ({ children }) => {
     }
     
     try {
-      const response = await axios.post(`${backendURI}/user/nfts`, {}, {
+      const response = await axios.post(`${backendURI}/getUserArtworks`, {}, {
         headers: {
           'Content-type': "application/json",
           Accept: 'application/json',
@@ -231,7 +233,8 @@ export const AppProvider = ({ children }) => {
         }
       });
       
-      setUserNfts(response.data.nfts);
+      setUserNfts(response.data.artworks);
+      console.log(response.data.artworks);
     } catch (err) {
       console.error('Error fetching user NFTs:', err);
       setError(err.response?.data?.message || 'Failed to load your artwork collection.');
@@ -256,7 +259,7 @@ export const AppProvider = ({ children }) => {
     }
     
     try {
-      const response = await axios.post(`${backendURI}/user/transactions`, {}, {
+      const response = await axios.post(`${backendURI}/getUserTransactions`, {}, {
         headers: {
           'Content-type': 'application/json',
           Accept: 'application/json',
