@@ -798,5 +798,73 @@ async def get_profile(request: Request, response: Response):
 
 
 
+@app.post('/getNftDetails')
+async def get_nft_details(request: Request, response: Response):
+    # Check authentication
+    req_headers = dict(request.headers)
+    if 'auth_token' not in req_headers:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"success": False, "message": "Unauthorized Access!"}
+    
+    auth_token = req_headers['auth_token']
+    
+    try:
+        # Get request body
+        data = await request.json()
+        nft_id = data.get('nft_id')
+        
+        if not nft_id:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "NFT ID is required"}
+        
+        # Authenticate user
+        user = await checkUserHelper(auth_token)
+        
+        # Fetch NFT details
+        nft = await nfts.find_one({'_id': ObjectId(nft_id)})
+        if not nft:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"success": False, "message": "NFT not found"}
+        
+        # Convert ObjectId to string
+        nft['_id'] = str(nft['_id'])
+        
+        # Format timestamp if it exists
+        if "timestamp" in nft and isinstance(nft["timestamp"], datetime):
+            nft["timestamp"] = nft["timestamp"].isoformat()
+        
+        # Fetch publisher details (only name and mail)
+        publisher = await users.find_one({'mail': nft['publisher_mail']}, {'name': 1, 'mail': 1, '_id': 0})
+        
+        # Fetch current owner details (only name and mail)
+        owner = await users.find_one({'mail': nft['owner_mail']}, {'name': 1, 'mail': 1, '_id': 0})
+        
+        # Fetch all transactions for this NFT (excluding mint transactions)
+        nft_transactions = await transactions.find({
+            'nft_id': nft_id,
+            'type': {'$ne': 'mint'}
+        }).sort('timestamp', -1).to_list(length=None)
+        
+        # Process transactions
+        for transaction in nft_transactions:
+            transaction['_id'] = str(transaction['_id'])
+            if "timestamp" in transaction and isinstance(transaction["timestamp"], datetime):
+                transaction["timestamp"] = transaction["timestamp"].isoformat()
+        
+        # Return combined data
+        return {
+            "success": True,
+            "nft": nft,
+            "publisher": publisher,
+            "owner": owner,
+            "transactions": nft_transactions
+        }
+            
+    except Exception as e:
+        print(f"Error retrieving NFT details: {str(e)}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"success": False, "message": f"Error retrieving NFT details: {str(e)}"}
+
+
 if __name__ == '__main__':
     uvicorn.run("main:app", reload=True)

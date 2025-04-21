@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiDollarSign, FiShoppingCart, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useAppContext } from '../context/AppContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 const Marketplace = () => {
   const { 
@@ -14,6 +14,8 @@ const Marketplace = () => {
     changeMarketplacePage,
     user
   } = useAppContext();
+  
+  const navigate = useNavigate();
   
   const [selectedCategory, setSelectedCategory] = useState('all');
   
@@ -139,7 +141,7 @@ const Marketplace = () => {
           ) : marketplaceItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {marketplaceItems.map((nft) => (
-                <div key={nft._id} className="group cursor-pointer">
+                <div key={nft._id} className="group cursor-pointer" onClick={() => navigate(`/nft/${nft._id}`)}>
                   <div className="relative overflow-hidden rounded-lg mb-2">
                     <img 
                       src={nft.image_url} 

@@ -33,6 +33,10 @@ export const AppProvider = ({ children }) => {
     items_per_page: 30
   });
   
+  const [currentNft, setCurrentNft] = useState(null);
+  const [nftTransactions, setNftTransactions] = useState([]);
+  const [nftLoading, setNftLoading] = useState(false);
+
   // Check if user session is valid
   const validateSession = async () => {
     setIsLoading(true);
@@ -261,6 +265,53 @@ export const AppProvider = ({ children }) => {
       return false;
     }
   };
+
+  const fetchNftDetails = async (nftId) => {
+    setNftLoading(true);
+    setError(null);
+    
+    const auth_token = localStorage.getItem('auth_token');
+    
+    if (!auth_token) {
+      setNftLoading(false);
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const response = await axios.post(
+        `${backendURI}/getNftDetails`,
+        {nft_id: nftId},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'auth_token': auth_token
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        setCurrentNft({
+          ...response.data.nft,
+          publisher: response.data.publisher,
+          owner: response.data.owner
+        });
+        setNftTransactions(response.data.transactions);
+      } else {
+        setError(response.data.message);
+      }
+    } catch (err) {
+      console.error('Error fetching NFT details:', err);
+      setError(err.response?.data?.message || 'Failed to load NFT details.');
+      
+      // If unauthorized, validate session again
+      if (err.response?.status === 401) {
+        validateSession();
+      }
+    } finally {
+      setNftLoading(false);
+    }
+  };
   
   // Handle user registration
   const register = async (userData) => {
@@ -391,7 +442,11 @@ export const AppProvider = ({ children }) => {
     fetchMarketplaceItems,
     changeMarketplacePage,
     uploadNft,
-    clearError: () => setError(null)
+    clearError: () => setError(null),
+    currentNft,
+    nftTransactions,
+    nftLoading,
+    fetchNftDetails,
   };
   
   return (
