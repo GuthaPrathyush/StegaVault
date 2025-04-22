@@ -1224,5 +1224,5 @@ async def verify_nft_ownership(file: UploadFile = File(...)):
 
 
 if __name__ == '__main__':
-    uvicorn.run("main:app", reload=True)
+    uvicorn.run("main:app", reload=True, port=10000)
     
