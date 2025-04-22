@@ -11,6 +11,11 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   
+  // Format currency in Indian Rupees
+  const formatCurrency = (amount) => {
+    return `₹${Number(amount).toLocaleString('en-IN')}`;
+  };
+  
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
@@ -82,6 +87,12 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:block">
             <div className="flex items-center space-x-4">
+              {/* Balance Display */}
+              <div className="px-3 py-2 rounded-lg bg-white/10 border border-[#22D3EE]/30 flex items-center">
+                <FiDollarSign className="text-[#22D3EE] mr-2" />
+                <span className="text-white font-medium">{formatCurrency(user?.balance || 0)}</span>
+              </div>
+              
               {/* Search Bar */}
               <div className="relative">
                 <input
@@ -242,6 +253,15 @@ const Navbar = () => {
       {isOpen && (
         <div className="md:hidden bg-[#0F172A] border-t border-white/10">
           <div className="px-2 pt-2 pb-3 space-y-1">
+            {/* Balance Display - Mobile */}
+            <div className="px-3 py-2 mb-2 rounded-lg bg-white/10 border border-[#22D3EE]/30 flex items-center justify-between">
+              <span className="text-gray-400">Balance:</span>
+              <div className="flex items-center">
+                <FiDollarSign className="text-[#22D3EE] mr-1" />
+                <span className="text-white font-medium">{formatCurrency(user?.balance || 0)}</span>
+              </div>
+            </div>
+            
             {/* Page Title - Mobile */}
             <div className="px-3 py-2 text-white font-medium border-b border-white/10 mb-2">
               {getPageTitle()}

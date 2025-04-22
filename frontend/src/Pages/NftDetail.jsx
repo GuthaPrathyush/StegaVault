@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiDollarSign, FiUser, FiCalendar, FiClock, FiShoppingCart } from 'react-icons/fi';
+import { FiArrowLeft, FiDollarSign, FiUser, FiCalendar, FiClock, FiShoppingCart, FiEdit, FiCheck, FiX, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { useAppContext } from '../context/AppContext';
@@ -18,12 +18,23 @@ const NftDetail = () => {
     fetchNftDetails, 
     user, 
     isAuthenticated,
-    buyNft
+    buyNft,
+    updateNft
   } = useAppContext();
   
   const [buyLoading, setBuyLoading] = useState(false);
   const [buySuccess, setBuySuccess] = useState(false);
   const [buyError, setBuyError] = useState(null);
+  
+  // State for price editing
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState('');
+  const [priceUpdateLoading, setPriceUpdateLoading] = useState(false);
+  const [priceUpdateError, setPriceUpdateError] = useState(null);
+  
+  // State for status toggling
+  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+  const [statusUpdateError, setStatusUpdateError] = useState(null);
   
   // Format currency in Indian Rupees
   const formatCurrency = (amount) => {
@@ -42,6 +53,13 @@ const NftDetail = () => {
       fetchNftDetails(nft_id);
     }
   }, []);
+  
+  // Update newPrice when currentNft changes
+  useEffect(() => {
+    if (currentNft) {
+      setNewPrice(currentNft.price.toString());
+    }
+  }, [currentNft]);
   
   // Prepare chart data
   const prepareChartData = () => {
@@ -134,7 +152,7 @@ const NftDetail = () => {
     setBuyError(null);
     
     try {
-      const result = await buyNft(nft_id, currentNft.price);
+      const result = await buyNft(nft_id);
       
       if (result.success) {
         setBuySuccess(true);
@@ -153,6 +171,64 @@ const NftDetail = () => {
       setBuyLoading(false);
     }
   };
+  
+  // Handle price update
+  const handlePriceUpdate = async () => {
+    if (!currentNft || !newPrice) return;
+    
+    // Validate price
+    const priceValue = parseFloat(newPrice);
+    if (isNaN(priceValue) || priceValue <= 0) {
+      setPriceUpdateError('Please enter a valid price greater than zero');
+      return;
+    }
+    
+    setPriceUpdateLoading(true);
+    setPriceUpdateError(null);
+    
+    try {
+      const result = await updateNft(nft_id, { price: priceValue });
+      
+      if (result.success) {
+        setIsEditingPrice(false);
+        // NFT details will be refreshed by the updateNft function
+      } else {
+        setPriceUpdateError(result.message);
+      }
+    } catch (err) {
+      console.error('Error updating price:', err);
+      setPriceUpdateError('Failed to update price. Please try again.');
+    } finally {
+      setPriceUpdateLoading(false);
+    }
+  };
+  
+  // Handle status toggle
+  const handleStatusToggle = async () => {
+    if (!currentNft) return;
+    
+    const newStatus = currentNft.status === 'active' ? 'inactive' : 'active';
+    
+    setStatusUpdateLoading(true);
+    setStatusUpdateError(null);
+    
+    try {
+      const result = await updateNft(nft_id, { status: newStatus });
+      
+      if (!result.success) {
+        setStatusUpdateError(result.message);
+      }
+      // NFT details will be refreshed by the updateNft function
+    } catch (err) {
+      console.error('Error updating status:', err);
+      setStatusUpdateError('Failed to update status. Please try again.');
+    } finally {
+      setStatusUpdateLoading(false);
+    }
+  };
+  
+  // Check if current user is the owner
+  const isOwner = currentNft && user && currentNft.owner_mail === user.mail;
   
   // Loading state
   if (nftLoading) {
@@ -201,11 +277,11 @@ const NftDetail = () => {
       <div className="p-6 max-w-7xl mx-auto">
         {/* Back button */}
         <button 
-          onClick={() => navigate('/marketplace')}
+          onClick={() => navigate(-1)}
           className="flex items-center text-[#22D3EE] hover:text-[#A855F7] transition-colors mb-6"
         >
           <FiArrowLeft className="mr-2" />
-          Back to Marketplace
+          Back
         </button>
         
         {/* NFT Details */}
@@ -223,6 +299,14 @@ const NftDetail = () => {
                   e.target.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
                 }}
               />
+              {/* Status Badge */}
+              <div className={`absolute top-4 right-4 px-3 py-1 rounded-full ${
+                currentNft?.status === 'active' 
+                  ? 'bg-green-500/20 text-green-400' 
+                  : 'bg-red-500/20 text-red-400'
+              }`}>
+                {currentNft?.status === 'active' ? 'For Sale' : 'Not For Sale'}
+              </div>
             </div>
             
             {/* Price History Chart */}
@@ -251,37 +335,118 @@ const NftDetail = () => {
                 <span>Created on {formatDate(currentNft?.timestamp)}</span>
               </div>
               
+              {/* Price Display/Edit Section */}
               <div className="flex justify-between items-center mb-6">
-                <div>
-                  <p className="text-sm text-gray-400">Current Price</p>
-                  <p className="text-3xl font-bold text-[#22D3EE]">{formatCurrency(currentNft?.price)}</p>
-                </div>
-                
-                {currentNft?.owner_mail !== user?.mail && (
-                  <button
-                    onClick={handleBuyNft}
-                    disabled={buyLoading || buySuccess}
-                    className="px-6 py-3 bg-gradient-to-r from-[#22D3EE] to-[#A855F7] text-white rounded-lg font-medium flex items-center disabled:opacity-70"
-                  >
-                    {buyLoading ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                        Processing...
-                      </>
-                    ) : buySuccess ? (
-                      <>
-                        <FiDollarSign className="mr-2" />
-                        Purchase Complete!
-                      </>
-                    ) : (
-                      <>
-                        <FiShoppingCart className="mr-2" />
-                        Buy Now
-                      </>
+                {isEditingPrice ? (
+                  <div className="flex-1 mr-4">
+                    <label className="text-sm text-gray-400 block mb-1">New Price (₹)</label>
+                    <div className="flex">
+                      <input
+                        type="number"
+                        value={newPrice}
+                        onChange={(e) => setNewPrice(e.target.value)}
+                        min="0.01"
+                        step="0.01"
+                        className="flex-1 px-3 py-2 rounded-l-lg bg-[#0F172A]/60 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-[#22D3EE] focus:border-transparent"
+                        placeholder="Enter new price"
+                      />
+                      <button
+                        onClick={handlePriceUpdate}
+                        disabled={priceUpdateLoading}
+                        className="px-3 py-2 bg-[#22D3EE] text-white rounded-r-lg hover:bg-[#22D3EE]/80 transition-colors"
+                      >
+                        {priceUpdateLoading ? (
+                          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                        ) : (
+                          <FiCheck />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingPrice(false);
+                          setNewPrice(currentNft.price.toString());
+                          setPriceUpdateError(null);
+                        }}
+                        className="ml-2 px-3 py-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                    {priceUpdateError && (
+                      <p className="text-red-400 text-sm mt-1">{priceUpdateError}</p>
                     )}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-400">Current Price</p>
+                    <div className="flex items-center">
+                      <p className="text-3xl font-bold text-[#22D3EE]">{formatCurrency(currentNft?.price)}</p>
+                      {isOwner && (
+                        <button
+                          onClick={() => setIsEditingPrice(true)}
+                          className="ml-2 p-1 text-gray-400 hover:text-white transition-colors"
+                          title="Edit Price"
+                        >
+                          <FiEdit />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Buy or Status Toggle Button */}
+                {isOwner ? (
+                  <button
+                    onClick={handleStatusToggle}
+                    disabled={statusUpdateLoading}
+                    className={`px-4 py-2 rounded-lg font-medium flex items-center ${
+                      currentNft?.status === 'active'
+                        ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                        : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                    } transition-colors disabled:opacity-70`}
+                  >
+                    {statusUpdateLoading ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                    ) : currentNft?.status === 'active' ? (
+                      <FiToggleRight className="mr-2" />
+                    ) : (
+                      <FiToggleLeft className="mr-2" />
+                    )}
+                    {currentNft?.status === 'active' ? 'Remove from Sale' : 'List for Sale'}
                   </button>
+                ) : (
+                  currentNft?.status === 'active' && (
+                    <button
+                      onClick={handleBuyNft}
+                      disabled={buyLoading || buySuccess}
+                      className="px-6 py-3 bg-gradient-to-r from-[#22D3EE] to-[#A855F7] text-white rounded-lg font-medium flex items-center disabled:opacity-70"
+                    >
+                      {buyLoading ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                          Processing...
+                        </>
+                      ) : buySuccess ? (
+                        <>
+                          <FiDollarSign className="mr-2" />
+                          Purchase Complete!
+                        </>
+                      ) : (
+                        <>
+                          <FiShoppingCart className="mr-2" />
+                          Buy Now
+                        </>
+                      )}
+                    </button>
+                  )
                 )}
               </div>
+              
+              {statusUpdateError && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-100">
+                  {statusUpdateError}
+                </div>
+              )}
               
               {buyError && (
                 <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-100">
@@ -303,7 +468,7 @@ const NftDetail = () => {
                   <div className="flex items-center">
                     <FiUser className="text-[#A855F7] mr-2" />
                     <span>{currentNft?.owner?.name || currentNft?.owner_mail}</span>
-                    {currentNft?.owner_mail === user?.mail && (
+                    {isOwner && (
                       <span className="ml-2 px-2 py-1 bg-[#22D3EE]/20 text-[#22D3EE] text-xs rounded-full">You</span>
                     )}
                   </div>

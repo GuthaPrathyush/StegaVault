@@ -96,6 +96,7 @@ export const AppProvider = ({ children }) => {
       
       if (response.data.success) {
         setUser(response.data.user);
+        console.log(response.data.user);
       } else {
         setError(response.data.message || 'Failed to fetch user profile.');
       }
@@ -312,6 +313,79 @@ export const AppProvider = ({ children }) => {
       setNftLoading(false);
     }
   };
+
+  // Buy an NFT
+  const buyNft = async (nftId) => {
+    setIsLoading(true);
+    setError(null);
+    
+    const auth_token = localStorage.getItem('auth_token');
+    
+    if (!auth_token) {
+      setError('Authentication required');
+      setIsLoading(false);
+      navigate('/login');
+      return { success: false, message: 'Authentication required' };
+    }
+    
+    try {
+      const response = await axios.post(
+        `${backendURI}/buy-nft`,
+        { nft_id: nftId },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'auth_token': auth_token
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        // Update user's balance in the state
+        setUser(prevUser => ({
+          ...prevUser,
+          balance: response.data.new_balance
+        }));
+        
+        // Refresh data after purchase
+        await Promise.all([
+          fetchUserNfts(),
+          fetchUserTransactions()
+        ]);
+        
+        return {
+          success: true,
+          transaction_id: response.data.transaction_id,
+          nft_id: response.data.nft_id,
+          price: response.data.price,
+          new_balance: response.data.new_balance,
+          message: 'Artwork purchased successfully'
+        };
+      } else {
+        setError(response.data.message || 'Failed to purchase artwork');
+        return {
+          success: false,
+          message: response.data.message || 'Failed to purchase artwork'
+        };
+      }
+    } catch (err) {
+      console.error('NFT purchase error:', err);
+      setError(err.response?.data?.message || 'Failed to purchase artwork.');
+      
+      // If unauthorized, validate session again
+      if (err.response?.status === 401) {
+        validateSession();
+      }
+      
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Failed to purchase artwork'
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   
   // Handle user registration
   const register = async (userData) => {
@@ -403,6 +477,73 @@ export const AppProvider = ({ children }) => {
     }
   };
   
+  const updateNft = async (nftId, updates) => {
+    setIsLoading(true);
+    setError(null);
+    
+    const auth_token = localStorage.getItem('auth_token');
+    
+    if (!auth_token) {
+      setError('Authentication required');
+      setIsLoading(false);
+      navigate('/login');
+      return { success: false, message: 'Authentication required' };
+    }
+    
+    try {
+      const response = await axios.post(
+        `${backendURI}/update-nft`,
+        { 
+          nft_id: nftId,
+          ...updates
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'auth_token': auth_token
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        // If we're updating the currently viewed NFT, refresh its details
+        if (currentNft && currentNft._id === nftId) {
+          await fetchNftDetails(nftId);
+        }
+        
+        // Refresh user's NFTs list
+        await fetchUserNfts();
+        
+        return {
+          success: true,
+          message: 'NFT updated successfully',
+          updates: response.data.updates
+        };
+      } else {
+        setError(response.data.message || 'Failed to update NFT');
+        return {
+          success: false,
+          message: response.data.message || 'Failed to update NFT'
+        };
+      }
+    } catch (err) {
+      console.error('NFT update error:', err);
+      setError(err.response?.data?.message || 'Failed to update NFT.');
+      
+      // If unauthorized, validate session again
+      if (err.response?.status === 401) {
+        validateSession();
+      }
+      
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Failed to update NFT'
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Initial authentication check when app loads
   useEffect(() => {
     const initializeAuth = async () => {
@@ -447,6 +588,8 @@ export const AppProvider = ({ children }) => {
     nftTransactions,
     nftLoading,
     fetchNftDetails,
+    buyNft,
+    updateNft,
   };
   
   return (

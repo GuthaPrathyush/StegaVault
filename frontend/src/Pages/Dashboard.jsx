@@ -95,7 +95,7 @@ const Dashboard = () => {
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-white/5 h-full">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Your Artworks</h2>
-                <button className="text-sm text-[#22D3EE] hover:text-[#A855F7] transition-colors">
+                <button className="text-sm text-[#22D3EE] hover:text-[#A855F7] transition-colors" onClick={() => navigate('/myartworks')}>
                   View All
                 </button>
               </div>

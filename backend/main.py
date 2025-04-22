@@ -142,6 +142,7 @@ async def complete_registration(auth_token: str):
         user = dict(user)
         user.pop('_id')
         user.pop('expiresAt')
+        user['balance'] = 1000.00
         new_item = await users.insert_one(user)
         await registrations.find_one_and_delete({'_id': ObjectId(data['_id'])})
         return f"""
@@ -299,11 +300,6 @@ async def upload_nft(
         
         # Create a consistent private key that won't change with time
         # Using only the user ID without validTill attribute
-        consistent_private_key = jwt.encode(
-            {'_id': user_id}, 
-            os.getenv('JWT_KEY'), 
-            algorithm="HS256"
-        )
         
         # Create data to be encoded in the image
         steganography_data = {
@@ -311,8 +307,7 @@ async def upload_nft(
                 "owner_mail": publisher_mail,
                 "nft_id": nft_id,
                 "transaction_id": transaction_id
-            },
-            "private_key": consistent_private_key
+            }
         }
         
         # Use JWT to encode the steganography data instead of just JSON
@@ -772,7 +767,8 @@ async def get_profile(request: Request, response: Response):
         # Extract only the required fields (name and mail)
         user_profile = {
             "name": user['name'],
-            "mail": user['mail']
+            "mail": user['mail'],
+            "balance": user['balance']
         }
         
         return {
@@ -864,6 +860,271 @@ async def get_nft_details(request: Request, response: Response):
         print(f"Error retrieving NFT details: {str(e)}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"success": False, "message": f"Error retrieving NFT details: {str(e)}"}
+
+
+@app.post('/buy-nft')
+async def buy_nft(request: Request, response: Response):
+    # Check authentication
+    req_headers = dict(request.headers)
+    if 'auth_token' not in req_headers:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"success": False, "message": "Unauthorized Access!"}
+    
+    auth_token = req_headers['auth_token']
+    
+    # Variables to track created objects for cleanup in case of failure
+    transaction_id = None
+    
+    try:
+        # Get request body
+        data = await request.json()
+        nft_id = data.get('nft_id')
+        
+        if not nft_id:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "NFT ID is required"}
+        
+        # Authenticate buyer and get user information
+        buyer = await checkUserHelper(auth_token)
+        buyer_mail = buyer['mail']
+        buyer_id = str(buyer['_id'])
+        
+        # Fetch NFT details
+        nft = await nfts.find_one({'_id': ObjectId(nft_id)})
+        if not nft:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"success": False, "message": "NFT not found"}
+        
+        # Check if NFT is active
+        if nft.get('status') != 'active':
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "This NFT is not available for purchase"}
+        
+        # Check if buyer is not already the owner
+        seller_mail = nft.get('owner_mail')
+        if seller_mail == buyer_mail:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "You already own this NFT"}
+        
+        # Get NFT price from database (not trusting frontend)
+        price = nft.get('price', 0)
+        
+        # Check if buyer has sufficient balance
+        buyer_balance = buyer.get('balance', 0)
+        if buyer_balance < price:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "Insufficient balance to purchase this NFT"}
+        
+        # Get seller details
+        seller = await users.find_one({'mail': seller_mail})
+        if not seller:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"success": False, "message": "Seller not found"}
+        
+        seller_id = str(seller['_id'])
+        
+        # Create transaction record
+        transaction_data = {
+            "nft_id": nft_id,
+            "from": seller_mail,
+            "to": buyer_mail,
+            "type": "purchase",
+            "price": price,
+            "timestamp": datetime.now(timezone.utc)
+        }
+        
+        # Insert transaction data and get transaction ID
+        transaction_result = await transactions.insert_one(transaction_data)
+        transaction_id = str(transaction_result.inserted_id)
+        
+        # Update NFT ownership
+        await nfts.update_one(
+            {"_id": ObjectId(nft_id)},
+            {"$set": {"owner_mail": buyer_mail}}
+        )
+        
+        # Update buyer's balance (deduct price)
+        await users.update_one(
+            {"_id": ObjectId(buyer_id)},
+            {"$inc": {"balance": -price}}
+        )
+        
+        # Update seller's balance (add price)
+        await users.update_one(
+            {"_id": ObjectId(seller_id)},
+            {"$inc": {"balance": price}}
+        )
+        
+        # Create data to be encoded in the image
+        try:
+            # Create new steganography data with updated owner
+            steganography_data = {
+                "data": {
+                    "owner_mail": buyer_mail,
+                    "nft_id": nft_id,
+                    "transaction_id": transaction_id
+                }
+            }
+            
+            # Use JWT to encode the steganography data
+            encoded_data = jwt.encode(
+                steganography_data, 
+                os.getenv('JWT_KEY'), 
+                algorithm="HS256"
+            )
+            
+            # Download the image
+            async with httpx.AsyncClient() as client:
+                img_response = await client.get(nft['image_url'])
+                if img_response.status_code != 200:
+                    raise Exception("Image could not be retrieved")
+                img_bytes = img_response.content
+            
+            # Open image
+            img = Image.open(io.BytesIO(img_bytes))
+            
+            # Convert to RGB mode if needed
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Encode the new ownership data
+            stego_img = lsb.hide(img, encoded_data)
+            
+            # Save the steganographed image to a buffer
+            buffer = io.BytesIO()
+            stego_img.save(buffer, format='PNG')
+            buffer.seek(0)
+            
+            # Upload to Cloudinary with specific options
+            upload_result = cloudinary.uploader.upload(
+                buffer, 
+                folder="nft_images",
+                public_id=f"nft_{nft_id}",
+                resource_type="image",
+                format="png",
+                quality="100",
+                overwrite=True
+            )
+            
+            # Get the new Cloudinary URL
+            new_image_url = upload_result.get('secure_url')
+            
+            # Update the NFT record with the new image URL
+            await nfts.update_one(
+                {"_id": ObjectId(nft_id)},
+                {"$set": {"image_url": new_image_url, "status": "inactive"}}
+            )
+            
+        except Exception as e:
+            print(f"Warning: Failed to update steganography data: {str(e)}")
+            # Continue with the purchase even if steganography update fails
+            # This is a non-critical error that shouldn't block the transaction
+        
+        return {
+            "success": True,
+            "message": "NFT purchased successfully",
+            "transaction_id": transaction_id,
+            "nft_id": nft_id,
+            "price": price,
+            "new_balance": buyer_balance - price
+        }
+            
+    except Exception as e:
+        # Print detailed error for debugging
+        print(f"Error in buy-nft: {str(e)}")
+        
+        # Clean up any created transaction if there's an error
+        if transaction_id:
+            try:
+                await transactions.delete_one({"_id": ObjectId(transaction_id)})
+            except Exception as cleanup_error:
+                print(f"Error during cleanup: {str(cleanup_error)}")
+            
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"success": False, "message": f"Error purchasing NFT: {str(e)}"}
+
+
+@app.post('/update-nft')
+async def update_nft(request: Request, response: Response):
+    # Check authentication
+    req_headers = dict(request.headers)
+    if 'auth_token' not in req_headers:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"success": False, "message": "Unauthorized Access!"}
+    
+    auth_token = req_headers['auth_token']
+    
+    try:
+        # Get request body
+        data = await request.json()
+        nft_id = data.get('nft_id')
+        new_price = data.get('price')
+        new_status = data.get('status')
+        
+        if not nft_id:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "NFT ID is required"}
+        
+        # Validate price if provided
+        if new_price is not None:
+            try:
+                new_price = float(new_price)
+                if new_price <= 0:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return {"success": False, "message": "Price must be greater than zero"}
+            except ValueError:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"success": False, "message": "Invalid price format"}
+        
+        # Validate status if provided
+        if new_status is not None and new_status not in ['active', 'inactive']:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "Status must be 'active' or 'inactive'"}
+        
+        # Authenticate user
+        user = await checkUserHelper(auth_token)
+        user_mail = user['mail']
+        
+        # Fetch NFT details
+        nft = await nfts.find_one({'_id': ObjectId(nft_id)})
+        if not nft:
+            response.status_code = status.HTTP_404_NOT_FOUND
+            return {"success": False, "message": "NFT not found"}
+        
+        # Check if user is the owner
+        if nft.get('owner_mail') != user_mail:
+            response.status_code = status.HTTP_403_FORBIDDEN
+            return {"success": False, "message": "You must be the owner to update this NFT"}
+        
+        # Prepare update data
+        update_data = {}
+        if new_price is not None:
+            update_data['price'] = new_price
+        if new_status is not None:
+            update_data['status'] = new_status
+        
+        if not update_data:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "No update data provided"}
+        
+        # Update NFT
+        await nfts.update_one(
+            {"_id": ObjectId(nft_id)},
+            {"$set": update_data}
+        )
+        
+        return {
+            "success": True,
+            "message": "NFT updated successfully",
+            "nft_id": nft_id,
+            "updates": update_data
+        }
+            
+    except Exception as e:
+        print(f"Error updating NFT: {str(e)}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"success": False, "message": f"Error updating NFT: {str(e)}"}
+
 
 
 if __name__ == '__main__':
