@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 from email.message import EmailMessage
 from models.database_models import User, LoginUser, OwnershipVerificationRequest
+from fastapi.responses import JSONResponse
 import bcrypt
 from bson import ObjectId, errors
 import base64
@@ -35,16 +36,16 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace * with your frontend URL in production
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 async def check_ttl_index():
-    indexes_cursor = registrations.list_indexes()  # This returns a cursor
+    indexes_cursor = registrations.list_indexes() 
 
-    async for index in indexes_cursor:  # Iterate over the cursor asynchronously
+    async for index in indexes_cursor:  
         if "expiresAt" in index["key"]:
             return
     await registrations.create_index("expiresAt", expireAfterSeconds=0)
@@ -65,7 +66,7 @@ transactions = database['transactions']
 cloudinary.config(
     cloud_name = "ddvewtyvu",
     api_key = "253238265924481",
-    api_secret = os.getenv('CLOUDINARY_API_SECRET_KEY'), # Click 'View API Keys' above to copy your API secret
+    api_secret = os.getenv('CLOUDINARY_API_SECRET_KEY'), 
     secure=True
 )
 
@@ -246,157 +247,171 @@ async def checkUserHelper(auth_token: str):
 
 @app.post('/upload-nft')
 async def upload_nft(
-    response: Response,
     request: Request,
-    image: UploadFile = File(...),
+    response: Response,
     name: str = Form(...),
-    price: float = Form(...)
+    price: float = Form(...),
+    image: UploadFile = File(...)
 ):
     # Check authentication
     req_headers = dict(request.headers)
     if 'auth_token' not in req_headers:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message": "Unauthorized Access!"}
+        return {"success": False, "message": "Unauthorized Access!"}
     
     auth_token = req_headers['auth_token']
-    
-    # Variables to track created objects for cleanup in case of failure
-    nft_id = None
-    transaction_id = None
     
     try:
         # Authenticate user
         user = await checkUserHelper(auth_token)
-        publisher_mail = user['mail']
-        user_id = str(user['_id'])
+        user_mail = user['mail']
         
-        # Create NFT entry in database
+        # Validate price
+        if price <= 0:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": "Price must be greater than zero"}
+        
+        # Read the uploaded image
+        contents = await image.read()
+        
+        # Check if the image already has steganographic data
+        try:
+            img = Image.open(io.BytesIO(contents))
+            
+            # Convert to RGB mode if needed
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Try to extract hidden data
+            hidden_data = None
+            try:
+                hidden_data = lsb.reveal(img)
+            except Exception as steg_error:
+                # If lsb.reveal fails with an exception, log it but continue
+                # This might mean there's no hidden data or the format is incompatible
+                print(f"Steganography extraction error (likely no hidden data): {str(steg_error)}")
+            
+            # If we got hidden data, check if it's valid JWT
+            if hidden_data:
+                try:
+                    # Try to decode as JWT
+                    decoded_data = jwt.decode(hidden_data, os.getenv('JWT_KEY'), algorithms=["HS256"])
+                    
+                    # If we successfully decoded JWT, check if it has ownership data
+                    if 'data' in decoded_data and 'owner_mail' in decoded_data['data']:
+                        response.status_code = status.HTTP_400_BAD_REQUEST
+                        return {
+                            "success": False, 
+                            "message": "This image already contains ownership information. Please upload original artwork only."
+                        }
+                except jwt.InvalidTokenError:
+                    # If JWT decode fails, it might be random data that looks like steganography
+                    # We'll still log it but allow the upload to proceed
+                    print("Found hidden data but not a valid JWT token")
+                except Exception as jwt_error:
+                    # Any other JWT-related error
+                    print(f"JWT processing error: {str(jwt_error)}")
+                    
+        except Exception as img_error:
+            # If we can't open the image, reject the upload
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"success": False, "message": f"Invalid image format: {str(img_error)}"}
+        
+        # If we get here, the image either doesn't have steganographic data or it's not ownership data
+        # Reset file pointer to beginning for re-reading
+        image_bytes = io.BytesIO(contents)
+        img = Image.open(image_bytes)
+        
+        # Convert to RGB mode if needed
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # Create a new transaction for minting
+        transaction_data = {
+            "type": "mint",
+            "from": user_mail,
+            "to": user_mail,
+            "price": 0,  # Minting is free
+            "timestamp": datetime.now(timezone.utc)
+        }
+        
+        # Insert transaction and get the ID
+        transaction_result = await transactions.insert_one(transaction_data)
+        transaction_id = str(transaction_result.inserted_id)
+        
+        # Create NFT document
         nft_data = {
             "name": name,
             "price": price,
-            "publisher_mail": publisher_mail,
-            "owner_mail": publisher_mail,  # Initially, publisher is the owner
+            "publisher_mail": user_mail,
+            "owner_mail": user_mail,
             "timestamp": datetime.now(timezone.utc),
             "status": "active"
         }
         
-        # Insert NFT data and get the NFT ID
+        # Insert NFT and get the ID
         nft_result = await nfts.insert_one(nft_data)
         nft_id = str(nft_result.inserted_id)
         
-        # Create initial transaction record (minting)
-        transaction_data = {
-            "nft_id": nft_id,
-            "from": publisher_mail,
-            "to": publisher_mail,  # Same user as it's a mint
-            "type": "mint",
-            "price": 0,
-            "timestamp": datetime.now(timezone.utc)
-        }
+        # Update transaction with NFT ID
+        await transactions.update_one(
+            {"_id": transaction_result.inserted_id},
+            {"$set": {"nft_id": nft_id}}
+        )
         
-        # Insert transaction data and get transaction ID
-        transaction_result = await transactions.insert_one(transaction_data)
-        transaction_id = str(transaction_result.inserted_id)
-        
-        # Create a consistent private key that won't change with time
-        # Using only the user ID without validTill attribute
-        
-        # Create data to be encoded in the image
+        # Prepare data to embed in the image
         steganography_data = {
             "data": {
-                "owner_mail": publisher_mail,
+                "owner_mail": user_mail,
                 "nft_id": nft_id,
                 "transaction_id": transaction_id
             }
         }
         
-        # Use JWT to encode the steganography data instead of just JSON
+        # Encode data as JWT
         encoded_data = jwt.encode(
             steganography_data, 
             os.getenv('JWT_KEY'), 
             algorithm="HS256"
         )
         
-        # Read image content
-        image_content = await image.read()
-        img = Image.open(io.BytesIO(image_content))
+        # Embed data in the image using LSB steganography
+        stego_img = lsb.hide(img, encoded_data)
         
-        # Print image details for debugging
-        print(f"Original image format: {img.format}, size: {img.size}, mode: {img.mode}")
+        # Save the steganographed image to a buffer
+        buffer = io.BytesIO()
+        stego_img.save(buffer, format='PNG')
+        buffer.seek(0)
         
-        # Convert to RGB mode if it's not already (needed for some formats)
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            buffer, 
+            folder="nft_images",
+            public_id=f"nft_{nft_id}",
+            resource_type="image"
+        )
         
-        # Always convert to PNG (lossless format) before steganography
-        png_buffer = io.BytesIO()
-        img.save(png_buffer, format='PNG')
-        png_buffer.seek(0)
-        img = Image.open(png_buffer)
+        # Get the Cloudinary URL
+        image_url = upload_result.get('secure_url')
         
-        try:
-            # Attempt to encode the JWT token in the image
-            stego_img = lsb.hide(img, encoded_data)
-            
-            # Save the steganographed image to a buffer - ALWAYS use PNG format
-            buffer = io.BytesIO()
-            stego_img.save(buffer, format='PNG')
-            buffer.seek(0)
-            
-            # Upload to Cloudinary with specific options to prevent compression
-            upload_result = cloudinary.uploader.upload(
-                buffer, 
-                folder="nft_images",
-                public_id=f"nft_{nft_id}",
-                resource_type="image",
-                format="png",  # Force PNG format
-                quality="100"  # Use highest quality
-            )
-            
-            # Get the Cloudinary URL
-            image_url = upload_result.get('secure_url')
-            
-            # Update the NFT record with the image URL
-            await nfts.update_one(
-                {"_id": ObjectId(nft_id)},
-                {"$set": {"image_url": image_url}}
-            )
-            
-            return {
-                "success": True,
-                "message": "NFT created successfully",
-                "nft_id": nft_id,
-                "image_url": image_url
-            }
-            
-        except Exception as e:
-            # Print detailed error for debugging
-            print(f"Steganography error: {str(e)}")
-            
-            # Clean up created objects
-            if nft_id:
-                await nfts.delete_one({"_id": ObjectId(nft_id)})
-            if transaction_id:
-                await transactions.delete_one({"_id": ObjectId(transaction_id)})
-                
-            response.status_code = status.HTTP_400_BAD_REQUEST
-            return {
-                "success": False,
-                "message": f"Image processing error: {str(e)}. Try using a larger PNG image."
-            }
+        # Update NFT with image URL
+        await nfts.update_one(
+            {"_id": ObjectId(nft_id)},
+            {"$set": {"image_url": image_url}}
+        )
+        
+        return {
+            "success": True,
+            "message": "NFT created successfully",
+            "nft_id": nft_id,
+            "image_url": image_url
+        }
             
     except Exception as e:
-        # Print detailed error for debugging
-        print(f"General error in upload-nft: {str(e)}")
-        
-        # Clean up any created objects if there's an error
-        if nft_id:
-            await nfts.delete_one({"_id": ObjectId(nft_id)})
-        if transaction_id:
-            await transactions.delete_one({"_id": ObjectId(transaction_id)})
-            
+        print(f"Error creating NFT: {str(e)}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"success": False, "message": f"Error creating NFT: {str(e)}"}
+
 
 
 @app.post('/verifyOwnership')
@@ -440,7 +455,7 @@ async def verify_ownership(
         
         # Second verification: Extract embedded data from the NFT image
         try:
-            # Use the extractNftDataHelper to get the embedded data from the image
+            # Using the extractNftDataHelper to get the embedded data from the image
             decoded_jwt = await extractNftDataHelper(nft_id)
             
             # The decoded JWT contains a nested 'data' object with the owner_mail
@@ -1126,6 +1141,88 @@ async def update_nft(request: Request, response: Response):
         return {"success": False, "message": f"Error updating NFT: {str(e)}"}
 
 
+@app.post("/verify-nft-ownership")
+async def verify_nft_ownership(file: UploadFile = File(...)):
+    """
+    Verify the ownership of an NFT by extracting steganographic data from an image.
+    
+    Args:
+        file: The uploaded image file
+    
+    Returns:
+        JSON response with ownership information if found
+    """
+    try:
+        # Read the uploaded file
+        contents = await file.read()
+        
+        # Open the image using PIL
+        img = Image.open(io.BytesIO(contents))
+        
+        # Convert to RGB mode if needed (for PNG with transparency)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        try:
+            # Extract the hidden data using LSB steganography
+            hidden_data = lsb.reveal(img)
+            
+            if not hidden_data:
+                return JSONResponse(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    content={"success": False, "message": "No steganographic data found in this image"}
+                )
+            
+            # Decode the JWT token
+            try:
+                decoded_data = jwt.decode(hidden_data, os.getenv('JWT_KEY'), algorithms=["HS256"])
+                
+                # Check if the decoded data contains ownership information
+                if 'data' in decoded_data and 'owner_mail' in decoded_data['data']:
+                    return JSONResponse(
+                        content={
+                            "success": True,
+                            "message": "Ownership information found",
+                            "ownership_data": {
+                                "owner_mail": decoded_data['data']['owner_mail'],
+                                "nft_id": decoded_data['data'].get('nft_id'),
+                                "transaction_id": decoded_data['data'].get('transaction_id')
+                            }
+                        }
+                    )
+                else:
+                    return JSONResponse(
+                        content={
+                            "success": True,
+                            "message": "Data found but no ownership information",
+                            "decoded_data": decoded_data
+                        }
+                    )
+                    
+            except jwt.ExpiredSignatureError:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"success": False, "message": "JWT token has expired"}
+                )
+            except jwt.InvalidTokenError as e:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"success": False, "message": f"Invalid JWT token: {str(e)}"}
+                )
+                
+        except Exception as e:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"success": False, "message": f"Failed to extract hidden data: {str(e)}"}
+            )
+            
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"success": False, "message": f"Error processing image: {str(e)}"}
+        )
+
 
 if __name__ == '__main__':
     uvicorn.run("main:app", reload=True)
+    
